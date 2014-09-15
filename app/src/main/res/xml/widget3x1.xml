@@ -4,5 +4,6 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:initialLayout="@layout/widget_layout"
     android:previewImage="@drawable/preview3x1"
+    android:updatePeriodMillis="0"
     android:minWidth="180dp"
     android:minHeight="40dp"/>

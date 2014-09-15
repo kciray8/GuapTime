@@ -21,7 +21,7 @@
 
 package com.kciray.guaptime;
 
-import android.app.ActivityManager;
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -39,7 +39,7 @@ import java.util.Calendar;
 import java.util.List;
 
 public class GuapTime extends AppWidgetProvider {
-    public static final String ACTION_CLICK_ON_WIDGET = "com.kciray.action.clickOnWidget";
+    public static String GUAP_TIME_TICK = "com.kciray.guaptime.intent.GUAP_TIME_TICK";
     private static final boolean DEBUG_MODE = false;
     static List<TimeSector> lessons = new ArrayList<>();
 
@@ -92,28 +92,14 @@ public class GuapTime extends AppWidgetProvider {
         }
     }
 
-    public static void updateWidgets(Context context) {
-        updateWidgetsForClass(context, GuapTime.class);
-        updateWidgetsForClass(context, GuapTime_3x1.class);
-        updateWidgetsForClass(context, GuapTime_2x1.class);
-        updateWidgetsForClass(context, GuapTimeKeyGuard.class);
-    }
-
-    private static void updateWidgetsForClass(Context context, Class cls) {
-        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-
-        ComponentName componentName = new ComponentName(context, cls);
-        int[] ids = appWidgetManager.getAppWidgetIds(componentName);
-        updateWidgets(context, appWidgetManager, ids, cls);
-    }
-
-    public static void updateWidgets(Context context, AppWidgetManager appWidgetManager, int[] ids, Class cls) {
+    public void updateWidgets(Context context, AppWidgetManager appWidgetManager, int[] ids) {
         PendingIntent clickOnWidgetPendingIntent = PendingIntent.getActivity(context, 0, new Intent(context, MainActivity.class), 0);
 
         for (int id : ids) {
+            Log.d("GTime", "updateWidgets  - #" + id);
+
             RemoteViews remoteViews = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
             remoteViews.setViewVisibility(R.id.second_str, View.VISIBLE);
-            configureSpecificClass(context, remoteViews, cls);
             TimeSector timeSector = getTimeZoneNow();
 
             switch (timeSector.getType()) {
@@ -145,24 +131,18 @@ public class GuapTime extends AppWidgetProvider {
                     remoteViews.setTextViewText(R.id.first_str, "Ночь");
                     remoteViews.setViewVisibility(R.id.second_str, View.GONE);
                     break;
+
+                case HOLIDAY:
+                    remoteViews.setTextViewText(R.id.first_str, "Выходной");
+                    remoteViews.setViewVisibility(R.id.second_str, View.GONE);
+                    break;
             }
 
             remoteViews.setOnClickPendingIntent(R.id.main_widget_layout, clickOnWidgetPendingIntent);
-            appWidgetManager.updateAppWidget(id, remoteViews);
-        }
-    }
+            setFontSize(remoteViews,getLogoSP(), getTextSP());
+            remoteViews.setTextViewText(R.id.logo, getLogoText());
 
-    private static void configureSpecificClass(Context context, RemoteViews remoteViews, Class cls) {
-        //DEFAULT = 27 and 12 SP
-        if (cls.equals(GuapTime_2x1.class)) {
-            if (!isLandscape(context)) {
-                setFontSize(remoteViews, 27, 10);
-            } else {
-                setFontSize(remoteViews, 25, 10);
-            }
-        }
-        if (cls.equals(GuapTimeKeyGuard.class)) {
-            setFontSize(remoteViews, 42, 12);
+            appWidgetManager.updateAppWidget(id, remoteViews);
         }
     }
 
@@ -180,6 +160,18 @@ public class GuapTime extends AppWidgetProvider {
         int minutesCount = getMinToEnd(timeSector);
         String minutes = context.getResources().getQuantityString(R.plurals.minutes, minutesCount);
         remoteViews.setTextViewText(R.id.second_str, "До конца " + minutesCount + " " + minutes);
+    }
+
+    protected float getLogoSP(){
+        return 27;
+    }
+
+    protected float getTextSP(){
+        return 12;
+    }
+
+    protected String getLogoText(){
+        return "ГУАП Time";
     }
 
     public static Calendar getNowCalendarInstance() {
@@ -213,6 +205,10 @@ public class GuapTime extends AppWidgetProvider {
     private static TimeSector getTimeZoneNow() {
         Calendar nowCalendar = getNowCalendarInstance();
         Calendar beginNowDay = getBeginNowDayCalendar();
+
+        if(nowCalendar.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY){
+            return TimeSector.getHoliday();
+        }
 
         long diffTime = nowCalendar.getTimeInMillis() - beginNowDay.getTimeInMillis();
 
@@ -254,29 +250,53 @@ public class GuapTime extends AppWidgetProvider {
     }
 
     @Override
-    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        super.onUpdate(context, appWidgetManager, appWidgetIds);
-        Log.d("tag", "onUpdate!");
+    public void onReceive(Context context, Intent intent) {
+        super.onReceive(context, intent);
 
-        updateWidgets(context);
-        ensureServiceRun(context);
-    }
+        final String action = intent.getAction();
 
-    private void ensureServiceRun(Context context) {
-        if (!isMyServiceRunning(GuapTimeService.class, context)) {
-            context.startService(new Intent(context, GuapTimeService.class));
-        }
-    }
-
-    private boolean isMyServiceRunning(Class<?> serviceClass, Context context) {
-
-        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
+        if (GUAP_TIME_TICK.equals(action) || Intent.ACTION_TIME_CHANGED.equals(action)
+                || Intent.ACTION_TIMEZONE_CHANGED.equals(action)) {
+            final ComponentName appWidgets = new ComponentName(context.getPackageName(), getClass()
+                    .getName());
+            final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+            final int ids[] = appWidgetManager.getAppWidgetIds(appWidgets);
+            if (ids.length > 0) {
+                onUpdate(context, appWidgetManager, ids);
             }
         }
-        return false;
+    }
+
+    @Override
+    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        Log.d("GTime", "onUpdate ");
+        updateWidgets(context, appWidgetManager, appWidgetIds);
+    }
+
+    private PendingIntent createPenIntentGT(Context context) {
+        return PendingIntent.getBroadcast(context, 0, new Intent(GUAP_TIME_TICK),
+                PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    @Override
+    public void onEnabled(Context context) {
+        super.onEnabled(context);
+
+        startTicking(context);
+    }
+
+    private void startTicking(Context context) {
+        final AlarmManager alarmManager = (AlarmManager) context
+                .getSystemService(Context.ALARM_SERVICE);
+
+        final Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(System.currentTimeMillis());
+        c.set(Calendar.SECOND, 0);
+        c.set(Calendar.MILLISECOND, 0);
+        c.add(Calendar.MINUTE, 1);
+
+        alarmManager.setRepeating(AlarmManager.RTC, c.getTimeInMillis(), 1000 * 60,
+                createPenIntentGT(context));
     }
 
     public static class TimeSector {
@@ -328,6 +348,10 @@ public class GuapTime extends AppWidgetProvider {
             return new TimeSector(Type.MORNING);
         }
 
+        public static TimeSector getHoliday() {
+            return new TimeSector(Type.HOLIDAY);
+        }
+
         public Type getType() {
             return type;
         }
@@ -344,6 +368,6 @@ public class GuapTime extends AppWidgetProvider {
             return beginTime + duration;
         }
 
-        public static enum Type {LESSON, PAUSE, BEFORE_FIRST, EVENING, NIGHT, MORNING}
+        public static enum Type {LESSON, PAUSE, BEFORE_FIRST, EVENING, NIGHT, MORNING, HOLIDAY}
     }
 }

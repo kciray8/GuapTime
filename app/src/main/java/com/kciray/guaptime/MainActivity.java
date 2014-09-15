@@ -21,14 +21,15 @@
 
 package com.kciray.guaptime;
 
-import android.app.ActionBar;
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarActivity;
+import android.view.MenuItem;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,7 +38,7 @@ import java.util.Date;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public class MainActivity extends Activity {
+public class MainActivity extends ActionBarActivity {
     TextView versionView;
 
     @Override
@@ -49,6 +50,7 @@ public class MainActivity extends Activity {
                 .append("Версия ").append(getVersionName()).append("\n")
                 .append("Дата сборки ").append(getLastUpdateTime()).append("\n")
                 .append("Разработчик - Ярослав aka KciRay").append("\n")
+                .append("Лицензия - GNU GPL v3").append("\n")
                 .append("4 факультет, группа 4141").append("\n")
                 .append("Группа - http://vk.com/guaptime").append("\n")
                 .append("Почта - kciray8@gmail.com");
@@ -66,6 +68,16 @@ public class MainActivity extends Activity {
             startActivity(browserIntent);
         });
 
+        findViewById(R.id.open_google_play).setOnClickListener(view -> {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.kciray.guaptime"));
+            startActivity(browserIntent);
+        });
+
+        findViewById(R.id.open_github).setOnClickListener(view -> {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/kciray8/GuapTime"));
+            startActivity(browserIntent);
+        });
+
         findViewById(R.id.open_email).setOnClickListener(view -> {
             Intent i = new Intent(Intent.ACTION_SEND);
             i.setType("message/rfc822");
@@ -78,11 +90,19 @@ public class MainActivity extends Activity {
             }
         });
 
-        int apiVer = android.os.Build.VERSION.SDK_INT;
-        if (apiVer >= 11) {
-            ActionBar actionBar = getActionBar();
-            actionBar.setSubtitle("О виджете");
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.setHomeButtonEnabled(true);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                String achievement = SpaceAchievements.getRandom();
+                Toast.makeText(this, achievement, Toast.LENGTH_LONG).show();
+                return true;
         }
+        return false;
     }
 
     private String getVersionName() {

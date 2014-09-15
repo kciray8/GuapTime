@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="project_name">GuapTime</string>
+    <string name="project_name">★ГУАП Time★</string>
 
     <plurals name="minutes">
         <item quantity="zero">минут</item>

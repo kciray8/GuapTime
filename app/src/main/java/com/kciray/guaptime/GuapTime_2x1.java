@@ -22,4 +22,19 @@
 package com.kciray.guaptime;
 
 public class GuapTime_2x1 extends GuapTime{
+    /*
+    @Override
+    protected float getLogoSP() {
+        return 20;
+    }*/
+
+    @Override
+    protected float getTextSP() {
+        return 10;
+    }
+
+    @Override
+    protected String getLogoText() {
+        return "ГУАП";
+    }
 }

@@ -22,4 +22,8 @@
 package com.kciray.guaptime;
 
 public class GuapTimeKeyGuard extends GuapTime {
+    @Override
+    protected float getLogoSP() {
+        return 40;
+    }
 }
